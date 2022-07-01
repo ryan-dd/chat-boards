@@ -1,6 +1,21 @@
 [requires]
 gtest/1.8.1
 spdlog/1.10.0
+imgui/1.74
+glfw/3.3.6
+glew/2.2.0
 
 [generators]
-cmake
+cmake_find_package_multi
+
+[generators]
+cmake_find_package_multi
+
+[options]
+glew:shared=False
+
+[imports]
+./res/bindings, imgui_impl_glfw.cpp -> ./bindings
+./res/bindings, imgui_impl_opengl3.cpp -> ./bindings
+./res/bindings, imgui_impl_glfw.h -> ./bindings
+./res/bindings, imgui_impl_opengl3.h -> ./bindings

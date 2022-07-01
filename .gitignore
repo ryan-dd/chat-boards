@@ -3,3 +3,4 @@ debug/*
 release/*
 compile_commands.json
 .cache
+bindings/*
