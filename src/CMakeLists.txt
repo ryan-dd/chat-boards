@@ -8,6 +8,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
 find_package(imgui CONFIG)
 find_package(glfw3 CONFIG)
 find_package(glew CONFIG)
+find_package(spdlog CONFIG)
 
 add_executable( Client
   main.cpp
@@ -24,4 +25,4 @@ target_include_directories(Client PUBLIC
   )
 
 target_compile_definitions(Client PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLEW)
-target_link_libraries(Client imgui::imgui GLEW::glew_s glfw::glfw)
+target_link_libraries(Client spdlog::spdlog imgui::imgui GLEW::glew_s glfw::glfw)
