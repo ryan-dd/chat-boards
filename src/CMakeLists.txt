@@ -12,7 +12,7 @@ find_package(spdlog CONFIG)
 
 add_executable( Client
   main.cpp
-  SampleClass.cpp
+  GUI.cpp
   ${CMAKE_BINARY_DIR}/bindings/imgui_impl_glfw.cpp
   ${CMAKE_BINARY_DIR}/bindings/imgui_impl_opengl3.cpp
   ${CMAKE_BINARY_DIR}/bindings/imgui_impl_glfw.h

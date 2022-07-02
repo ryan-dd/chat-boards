@@ -1,6 +1,7 @@
+#include "GUI.h"
+
 #include <cstddef>
 #include <cstdio>
-#include "SampleClass.h"
 #include <spdlog/spdlog.h>
 
 #include "imgui.h"
@@ -17,7 +18,7 @@ static void glfw_error_callback(int error, const char *description)
   fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-void SampleClass::do_something()
+void GUI::start()
 {
   // Setup window
   glfwSetErrorCallback(glfw_error_callback);

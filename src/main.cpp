@@ -1,7 +1,6 @@
-
-#include "SampleClass.h"
+#include "GUI.h"
 
 int main()
 {
-  SampleClass::do_something();
+  GUI::start();
 }
