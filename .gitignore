@@ -4,3 +4,4 @@ release/*
 compile_commands.json
 .cache
 bindings/*
+.DS_Store
