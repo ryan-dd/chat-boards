@@ -12,6 +12,7 @@
 
 // Include glfw3.h after our OpenGL definitions
 #include <GLFW/glfw3.h>
+#include <unordered_map>
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -79,15 +80,19 @@ void GUI::start()
   // Setup Dear ImGui style
   ImGui::StyleColorsDark();
 
+
   bool initialized_at_bottom = false;
   
-  std::vector<std::string> messages{
-    "Test: Demo message"
-  };
-
   size_t bufferSize = 500;
   char inputTextBuffer[bufferSize];
   memset(inputTextBuffer, 0, bufferSize);
+  std::string state = "Boards";
+  std::string currentBoard{};
+  std::unordered_map<std::string, std::vector<std::string>> chatBoardMessages
+  {
+    {"board1", {"Joe: hi1", "Josephine: hi2"}},
+    {"board2", {"Joe1: hi1", "Josephine1: hi2"}}
+  };
 
   while (!glfwWindowShouldClose(window))
   {
@@ -99,35 +104,55 @@ void GUI::start()
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, {800.f,600.f });
 
-    // state = handleMessages();
-    // RenderUI(state);
-    // render your GUI
-    ImGui::Begin("Chat here!!");
-
-    for(auto& message: messages)
+    if(state == "Boards")
     {
-      ImGui::Text("%s", message.data()); 
+      ImGui::Begin("Boards");
+      for(auto [key, value]: chatBoardMessages)
+      {
+        if (ImGui::Button(key.data()))
+        {
+          currentBoard = key;
+          initialized_at_bottom = false;
+          state = "Chat";
+        }
+      }
+      ImGui::End();
     }
-
-    if(!initialized_at_bottom)
+    else if(state == "Chat")
     {
-      ImGui::SetScrollHere(0.800f);
-      initialized_at_bottom = true;
+      ImGui::Begin("Chat here!!");
+
+      if (ImGui::Button("Back"))
+      {
+        state = "Boards";
+      }
+
+      for(auto& message: chatBoardMessages.at(currentBoard))
+      {
+        ImGui::Text("%s", message.data()); 
+      }
+
+      if(!initialized_at_bottom)
+      {
+        ImGui::SetScrollHere(0.999f);
+        initialized_at_bottom = true;
+      }
+
+      ImGui::InputTextMultiline("##text1", inputTextBuffer, bufferSize, {300, 50});
+
+      if (ImGui::IsRootWindowOrAnyChildFocused() && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0))
+         ImGui::SetKeyboardFocusHere(0);
+
+      if (ImGui::Button("Send"))
+      {
+        chatBoardMessages.at(currentBoard).push_back(inputTextBuffer);
+        memset(inputTextBuffer, 0, bufferSize);
+      }
+
+      ImGui::End();
     }
-
-    ImGui::InputTextMultiline("##text1", inputTextBuffer, bufferSize, {300, 50});
-
-    if (ImGui::IsRootWindowOrAnyChildFocused() && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0))
-       ImGui::SetKeyboardFocusHere(0);
-
-    if (ImGui::Button("Send"))
-    {
-      messages.push_back(inputTextBuffer);
-      memset(inputTextBuffer, 0, bufferSize);
-    }
-
-    ImGui::End();
 
     // Render dear imgui into screen
     ImGui::Render();
