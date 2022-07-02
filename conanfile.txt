@@ -1,12 +1,10 @@
 [requires]
 gtest/1.8.1
 spdlog/1.10.0
+nng/1.5.2
 imgui/1.74
 glfw/3.3.6
 glew/2.2.0
-
-[generators]
-cmake_find_package_multi
 
 [generators]
 cmake_find_package_multi
