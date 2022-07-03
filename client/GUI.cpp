@@ -13,6 +13,8 @@
 // Include glfw3.h after our OpenGL definitions
 #include <GLFW/glfw3.h>
 #include <unordered_map>
+#include <nngpp/nngpp.h>
+#include <nngpp/protocol/sub0.h>
 
 static void glfw_error_callback(int error, const char *description)
 {
