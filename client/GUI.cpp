@@ -25,13 +25,13 @@ static void glfw_error_callback(int error, const char *description)
   fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-bool setupWindow(GLFWwindow* window, std::string windowTitle, int windowWidth, int windowHeight)
+void GUI::start()
 {
+  // Setup window
   glfwSetErrorCallback(glfw_error_callback);
   if (!glfwInit())
   {
-    spdlog::error("GLFW init error");
-    return false;
+    return;
   }
 
     // Decide GL+GLSL versions
@@ -52,11 +52,12 @@ bool setupWindow(GLFWwindow* window, std::string windowTitle, int windowWidth, i
 #endif
 
   // Create window with graphics context
-  window = glfwCreateWindow(windowWidth, windowHeight, windowTitle.c_str(), nullptr, nullptr);
+  constexpr int width = 1280;
+  constexpr int height = 720;
+  GLFWwindow *window = glfwCreateWindow(width, height, "Chat boards", nullptr, nullptr);
   if (window == nullptr)
   {
-    spdlog::error("glfwCreateWindowError");
-    return false;
+    return;
   }
 
   glfwMakeContextCurrent(window);
@@ -67,7 +68,7 @@ bool setupWindow(GLFWwindow* window, std::string windowTitle, int windowWidth, i
   if (err)
   {
     spdlog::error("Failed to initialize OpenGL loader!");
-    return false;
+    return;
   }
 
   int screen_width;
@@ -84,11 +85,15 @@ bool setupWindow(GLFWwindow* window, std::string windowTitle, int windowWidth, i
   ImGui_ImplOpenGL3_Init(glsl_version);
   // Setup Dear ImGui style
   ImGui::StyleColorsDark();
-  return true;
-}
 
-void GUI::start()
-{
+  bool initialized_at_bottom = false;
+  
+  size_t bufferSize = 500;
+  char inputTextBuffer[bufferSize];
+  memset(inputTextBuffer, 0, bufferSize);
+  std::string state = "Boards";
+  std::string currentBoard{};
+
   // Get initial messages from server
 	nng::socket req_sock = nng::req::open();
 	req_sock.dial( "tcp://localhost:8000" );
@@ -97,32 +102,15 @@ void GUI::start()
   BoardMessages chatBoardMessages;
 	nng::buffer req_buf = req_sock.recv();
   CerealSerializer::decodeCereal(chatBoardMessages, req_buf);
+  spdlog::info(chatBoardMessages.at("board1")[0]);
 
-  // Setup GUI
-  constexpr int width = 1280;
-  constexpr int height = 720;
-  GLFWwindow* window;
-  if(!setupWindow(window, "Chat Boards", width, height))
-  {
-    return;
-  }
-
-  bool initialized_at_bottom = false;
-  size_t bufferSize = 500;
-  char inputTextBuffer[bufferSize];
-  memset(inputTextBuffer, 0, bufferSize);
-  std::string state = "Boards";
-  std::string currentBoard{};
-
-  // Subscribe for updates
   /* nng::socket sub_socket = nng::sub::open(); */
   /* sub_socket.set_opt( NNG_OPT_SUB_SUBSCRIBE, {} ); */
   /* sub_socket.dial("tcp://localhost:8001"); */ 
+  /* auto msg = sub_socket.recv(); */
 
   while (!glfwWindowShouldClose(window))
   {
-    /* auto msg = sub_socket.recv(); TODO make nonblocking*/
-
     glfwPollEvents();
     glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -174,7 +162,6 @@ void GUI::start()
 
       if (ImGui::Button("Send"))
       {
-        // TODO send to server
         chatBoardMessages.at(currentBoard).push_back(inputTextBuffer);
         memset(inputTextBuffer, 0, bufferSize);
       }
