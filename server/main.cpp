@@ -32,15 +32,12 @@ int main()
     if(rep_buf == "Hello")
     {
       CerealSerializer::encodeCerealAndSend(rep_sock, messages);
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-      pub_sock.send("Here it is");
-      // Send "messages"
-    /* rep_sock.send(all chat_board_data);  */
+      CerealSerializer::encodeCerealAndSend(pub_sock, messages);
     }
     else if(rep_buf == "New message")
     {
-      /* pub_sock.send("something"); */ 
-      // updated and then send messages 
+      // TODO Add message to data structure
+      CerealSerializer::encodeCerealAndSend(pub_sock, messages);
     }
   }
 
