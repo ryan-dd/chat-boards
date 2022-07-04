@@ -107,10 +107,10 @@ void GUI::start()
   /* nng::socket sub_socket = nng::sub::open(); */
   /* sub_socket.set_opt( NNG_OPT_SUB_SUBSCRIBE, {} ); */
   /* sub_socket.dial("tcp://localhost:8001"); */ 
-  /* auto msg = sub_socket.recv(); */
 
   while (!glfwWindowShouldClose(window))
   {
+    /* auto msg = sub_socket.recv(); TODO make async */
     glfwPollEvents();
     glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -162,7 +162,10 @@ void GUI::start()
 
       if (ImGui::Button("Send"))
       {
-        chatBoardMessages.at(currentBoard).push_back(inputTextBuffer);
+        NewMessage newMessage{currentBoard, inputTextBuffer};
+        CerealSerializer::encodeCerealAndSend(req_sock, newMessage);
+        auto buffer = req_sock.recv();
+        CerealSerializer::decodeCereal(chatBoardMessages, buffer);
         memset(inputTextBuffer, 0, bufferSize);
       }
 

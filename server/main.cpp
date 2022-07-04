@@ -35,8 +35,10 @@ int main()
     }
     else 
     {
-      // TODO Add message to data structure
-      CerealSerializer::encodeCerealAndSend(pub_sock, messages);
+      NewMessage newMessage;
+      CerealSerializer::decodeCereal(newMessage, rep_buf);
+      messages.at(newMessage.first).push_back(newMessage.second);
+      CerealSerializer::encodeCerealAndSend(rep_sock, messages);
     }
   }
 
