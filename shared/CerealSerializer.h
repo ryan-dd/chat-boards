@@ -7,12 +7,35 @@
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/types/vector.hpp>
 #include <cereal/types/string.hpp>
+#include <cereal/types/string.hpp>
+#include <cereal/types/utility.hpp>
 #include <cereal/archives/portable_binary.hpp>
 
 namespace CerealSerializer
 {
-  void encodeCerealAndSend(nng::socket_view sock, BoardMessages toSend);
-  void decodeCereal(BoardMessages& decodedMap, nng::buffer buffer);
+
+  template <typename T>
+  void encodeCerealAndSend(nng::socket_view sock, T& toSend)
+  {
+    std::stringstream ss;
+    {
+      cereal::PortableBinaryOutputArchive oarchive( ss );
+      oarchive( toSend );
+    }
+    auto stringToSend = ss.str();
+    sock.send({stringToSend.c_str(), stringToSend.size()});
+  }
+
+  template <typename T>
+  void decodeCereal(T& decodedMap, nng::buffer buffer)
+  {
+    std::string outstring{(char*)buffer.data(), buffer.size()};
+    std::stringstream ss2{outstring};
+    {
+      cereal::PortableBinaryInputArchive iarchive(ss2);
+      iarchive(decodedMap);
+    }
+  }
 }
 
 #endif // CEREAL_SERIALIZER_H

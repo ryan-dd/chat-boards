@@ -32,9 +32,8 @@ int main()
     if(rep_buf == "Hello")
     {
       CerealSerializer::encodeCerealAndSend(rep_sock, messages);
-      CerealSerializer::encodeCerealAndSend(pub_sock, messages);
     }
-    else if(rep_buf == "New message")
+    else 
     {
       // TODO Add message to data structure
       CerealSerializer::encodeCerealAndSend(pub_sock, messages);
