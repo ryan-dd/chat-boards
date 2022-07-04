@@ -15,6 +15,10 @@
 #include <unordered_map>
 #include <nngpp/nngpp.h>
 #include <nngpp/protocol/sub0.h>
+#include <nngpp/protocol/req0.h>
+
+#include "Data.h"
+#include "CerealSerializer.h"
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -82,7 +86,6 @@ void GUI::start()
   // Setup Dear ImGui style
   ImGui::StyleColorsDark();
 
-
   bool initialized_at_bottom = false;
   
   size_t bufferSize = 500;
@@ -90,11 +93,21 @@ void GUI::start()
   memset(inputTextBuffer, 0, bufferSize);
   std::string state = "Boards";
   std::string currentBoard{};
-  std::unordered_map<std::string, std::vector<std::string>> chatBoardMessages
-  {
-    {"board1", {"Joe: hi1", "Josephine: hi2"}},
-    {"board2", {"Joe1: hi1", "Josephine1: hi2"}}
-  };
+
+  // Get initial messages from server
+	nng::socket req_sock = nng::req::open();
+	req_sock.dial( "tcp://localhost:8000" );
+  req_sock.send("Hello");
+
+  BoardMessages chatBoardMessages;
+	nng::buffer req_buf = req_sock.recv();
+  CerealSerializer::decodeCereal(chatBoardMessages, req_buf);
+  spdlog::info(chatBoardMessages.at("board1")[0]);
+
+  /* nng::socket sub_socket = nng::sub::open(); */
+  /* sub_socket.set_opt( NNG_OPT_SUB_SUBSCRIBE, {} ); */
+  /* sub_socket.dial("tcp://localhost:8001"); */ 
+  /* auto msg = sub_socket.recv(); */
 
   while (!glfwWindowShouldClose(window))
   {

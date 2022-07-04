@@ -8,7 +8,7 @@ glfw/3.3.6
 glew/2.2.0
 
 [generators]
-cmake_find_package_multi
+cmake
 
 [options]
 glew:shared=False

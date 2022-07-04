@@ -9,6 +9,9 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 include(cmake/StaticAnalyzers.cmake)
 
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
+
 set(PROJECT_WARNINGS -Wall -Wshadow -Wnon-virtual-dtor -pedantic)
 
 # Doesn't have a conan pkg, but the lib is header only so its okay.
@@ -22,14 +25,14 @@ if(NOT nngpp_Populated)
   FetchContent_MakeAvailable(nngpp)
 endif()
 
-set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
-set(CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
+# set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
+# set(CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
 
-# CONFIG option is important so that CMake doesnt search for modules into the default modules directory
-find_package(spdlog CONFIG)
-find_package(nng CONFIG)
+# # CONFIG option is important so that CMake doesnt search for modules into the default modules directory
+# find_package(spdlog CONFIG)
+# find_package(nng CONFIG)
 
+add_subdirectory(shared)
 add_subdirectory(client)
 add_subdirectory(server)
-add_subdirectory(shared)
 # add_subdirectory(test)

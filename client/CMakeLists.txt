@@ -1,12 +1,6 @@
 project(ChatBoardClient)
 cmake_minimum_required(VERSION 3.0)
 
-find_package(imgui CONFIG)
-find_package(glfw3 CONFIG)
-find_package(glew CONFIG)
-find_package(nng CONFIG)
-find_package(cereal CONFIG)
-
 add_executable( ${PROJECT_NAME}
   main.cpp
   GUI.cpp
@@ -17,19 +11,14 @@ add_executable( ${PROJECT_NAME}
   )
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
-  ${CMAKE_SOURCE_DIR}/src 
+  ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_BINARY_DIR}
-  ${nngpp_SOURCE_DIR}/include/
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLEW)
 target_link_libraries(${PROJECT_NAME} PUBLIC
-  spdlog::spdlog 
-  imgui::imgui 
-  GLEW::glew_s 
-  glfw::glfw 
-  nng::nng 
-  nngpp
-  cereal::cereal
+  CONAN_PKG::imgui
+  CONAN_PKG::glew
+  CONAN_PKG::glfw
   Shared
   )

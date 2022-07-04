@@ -5,10 +5,10 @@
 #include <nngpp/protocol/pub0.h>
 #include <ratio>
 #include <spdlog/spdlog.h>
-#include <unordered_map>
-#include <string>
-#include <vector>
 #include <thread>
+
+#include "Data.h"
+#include "CerealSerializer.h"
 
 int main()
 {
@@ -18,7 +18,7 @@ int main()
   nng::socket pub_sock = nng::pub::open();
 	pub_sock.listen( "tcp://localhost:8001" ); 
 
-  std::unordered_map<std::string, std::vector<std::string>> messages{
+  BoardMessages messages{
     {"board1", {"hi", "hi2"}},
     {"board2", {"hi", "hi3"}}
   };
@@ -31,7 +31,7 @@ int main()
 
     if(rep_buf == "Hello")
     {
-      rep_sock.send("Nice");
+      CerealSerializer::encodeCerealAndSend(rep_sock, messages);
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
       pub_sock.send("Here it is");
       // Send "messages"
