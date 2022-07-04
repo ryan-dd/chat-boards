@@ -19,28 +19,8 @@
 #include <cereal/archives/portable_binary.hpp>
 #include <sstream>
 
-using BoardMessages = std::unordered_map<std::string, std::vector<std::string>>;
-
-void encodeCerealAndSend(nng::socket_view sock, BoardMessages toSend)
-{
-  std::stringstream ss;
-  {
-    cereal::PortableBinaryOutputArchive oarchive( ss );
-    oarchive( toSend );
-  }
-  auto stringToSend = ss.str();
-  sock.send({stringToSend.c_str(), stringToSend.size()});
-}
-
-void decodeCereal(BoardMessages& decodedMap, nng::buffer buffer)
-{
-  std::string outstring{(char*)buffer.data(), buffer.size()};
-  std::stringstream ss2{outstring};
-  {
-    cereal::PortableBinaryInputArchive iarchive(ss2);
-    iarchive(decodedMap);
-  }
-}
+#include "CerealSerializer.h"
+#include "Data.h"
 
 int main()
 {
@@ -55,11 +35,11 @@ int main()
 	nng::socket req_sock = nng::req::open();
 	req_sock.dial( "tcp://localhost:8000" );
 
-  encodeCerealAndSend(req_sock, toEncode);
+  CerealSerializer::encodeCerealAndSend(req_sock, toEncode);
 
   BoardMessages toDecode;
 	nng::buffer rep_buf = rep_sock.recv();
-  decodeCereal(toDecode, rep_buf);
+  CerealSerializer::decodeCereal(toDecode, rep_buf);
 
   spdlog::info(toDecode.at("key1")[0]);
 }

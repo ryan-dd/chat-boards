@@ -31,4 +31,5 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   nng::nng 
   nngpp
   cereal::cereal
+  Shared
   )
