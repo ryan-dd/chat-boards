@@ -27,7 +27,7 @@ namespace CerealSerializer
   }
 
   template <typename T>
-  void decodeCereal(T& decodedMap, nng::buffer buffer)
+  void decodeCereal(T& decodedMap, nng::view buffer)
   {
     std::string outstring{(char*)buffer.data(), buffer.size()};
     std::stringstream ss2{outstring};

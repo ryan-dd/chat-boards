@@ -47,8 +47,6 @@ void GUI::start()
   const char *glsl_version = "#version 130";
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-  //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-  //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 #endif
 
   // Create window with graphics context
@@ -104,13 +102,24 @@ void GUI::start()
   CerealSerializer::decodeCereal(chatBoardMessages, req_buf);
   spdlog::info(chatBoardMessages.at("board1")[0]);
 
-  /* nng::socket sub_socket = nng::sub::open(); */
-  /* sub_socket.set_opt( NNG_OPT_SUB_SUBSCRIBE, {} ); */
-  /* sub_socket.dial("tcp://localhost:8001"); */ 
+  nng::socket sub_socket = nng::sub::open();
+  sub_socket.set_opt( NNG_OPT_SUB_SUBSCRIBE, {} );
+  sub_socket.dial("tcp://localhost:8001"); 
 
+  void* data;
+  size_t size;
   while (!glfwWindowShouldClose(window))
   {
-    /* auto msg = sub_socket.recv(); TODO make async */
+    // See if server published any data updates
+    // Note: socket.recv() throws an exception if message is not received on non-block, which is way too expensive.
+    // so we will use nng instead of nngpp here.
+    int r = nng_recv(sub_socket.get(), &data, &size, nng::flag::nonblock | nng::flag::alloc);
+    if( r == static_cast<int>(nng::error::success) ) 
+    {
+      spdlog::info("Got sub message");
+      CerealSerializer::decodeCereal(chatBoardMessages, {data, size});
+    }
+
     glfwPollEvents();
     glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
     glClear(GL_COLOR_BUFFER_BIT);

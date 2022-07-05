@@ -39,6 +39,7 @@ int main()
       CerealSerializer::decodeCereal(newMessage, rep_buf);
       messages.at(newMessage.first).push_back(newMessage.second);
       CerealSerializer::encodeCerealAndSend(rep_sock, messages);
+      CerealSerializer::encodeCerealAndSend(pub_sock, messages);
     }
   }
 
