@@ -1,6 +1,7 @@
 # chat-boards
 
-A simple chat app with imgui
+A simple client-server chat app with imgui. 
+An excuse to try out some libraries: imgui, nng, and serialization/deserialization libs.
 
 ## Build requirements
 

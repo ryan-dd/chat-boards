@@ -14,7 +14,7 @@ conan_basic_setup(TARGETS NO_OUTPUT_DIRS)
 
 set(PROJECT_WARNINGS -Wall -Wshadow -Wnon-virtual-dtor -pedantic)
 
-# Doesn't have a conan pkg, but the lib is header only so its okay.
+# Doesn't have a conan pkg, but nngpp is header only so its okay.
 if(NOT nngpp_Populated)
   include(FetchContent)
   FetchContent_Declare(
@@ -24,13 +24,6 @@ if(NOT nngpp_Populated)
   )
   FetchContent_MakeAvailable(nngpp)
 endif()
-
-# set(CMAKE_PREFIX_PATH ${CMAKE_BINARY_DIR})
-# set(CMAKE_MODULE_PATH ${CMAKE_BINARY_DIR})
-
-# # CONFIG option is important so that CMake doesnt search for modules into the default modules directory
-# find_package(spdlog CONFIG)
-# find_package(nng CONFIG)
 
 add_subdirectory(shared)
 add_subdirectory(client)
