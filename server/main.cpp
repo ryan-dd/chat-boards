@@ -31,15 +31,17 @@ int main()
 
     if(rep_buf == "Hello")
     {
-      CerealSerializer::encodeCerealAndSend(rep_sock, messages);
+      auto serializedData = CerealSerializer::serialize(messages);
+      rep_sock.send({serializedData.data(), serializedData.size()});
     }
     else 
     {
       NewMessage newMessage;
-      CerealSerializer::decodeCereal(newMessage, rep_buf);
+      CerealSerializer::deserialize(newMessage, rep_buf);
       messages.at(newMessage.first).push_back(newMessage.second);
-      CerealSerializer::encodeCerealAndSend(rep_sock, messages);
-      CerealSerializer::encodeCerealAndSend(pub_sock, messages);
+      auto serializedData = CerealSerializer::serialize(messages);
+      rep_sock.send({serializedData.data(), serializedData.size()});
+      pub_sock.send({serializedData.data(), serializedData.size()});
     }
   }
 

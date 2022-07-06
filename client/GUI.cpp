@@ -28,7 +28,7 @@ void GUI::start()
 
   BoardMessages chatBoardMessages;
 	nng::buffer req_buf = req_sock.recv();
-  CerealSerializer::decodeCereal(chatBoardMessages, req_buf);
+  CerealSerializer::deserialize(chatBoardMessages, req_buf);
 
   // Initialize socket that will be updating the chat data
   nng::socket sub_socket = nng::sub::open();
@@ -36,7 +36,7 @@ void GUI::start()
   sub_socket.dial("tcp://localhost:8001"); 
 
   // Initialize gui state 
-  // All states
+  // Data for all states
   enum class BoardState{
     Lobby,
     Chat
@@ -48,7 +48,7 @@ void GUI::start()
   void* subscriptionData;
   size_t size;
 
-  // Board state
+  // Data for Chat state
   bool focusInitializedAtBottom = false;
   constexpr size_t bufferSize = 500;
   char inputTextBuffer[bufferSize]{};
@@ -56,13 +56,13 @@ void GUI::start()
   while (!glfwWindowShouldClose(window))
   {
     // See if server published any data updates
-    // Note: socket.recv() throws an exception if message is not received on non-block, which is way too expensive.
+    // Note: socket.recv() throws an exception if message is not received on non-block, which is very expensive.
     // so we will use nng instead of nngpp here.
     int r = nng_recv(sub_socket.get(), &subscriptionData, &size, nng::flag::nonblock | nng::flag::alloc);
     if( r == static_cast<int>(nng::error::success) ) 
     {
       spdlog::info("Got sub message");
-      CerealSerializer::decodeCereal(chatBoardMessages, {subscriptionData, size});
+      CerealSerializer::deserialize(chatBoardMessages, {subscriptionData, size});
     }
 
     glfwPollEvents();
@@ -119,9 +119,10 @@ void GUI::start()
       if (ImGui::Button("Send"))
       {
         NewMessage newMessage{currentBoard, inputTextBuffer};
-        CerealSerializer::encodeCerealAndSend(req_sock, newMessage);
+        auto serializedMessage = CerealSerializer::serialize(newMessage);
+        req_sock.send({serializedMessage.data(), serializedMessage.size()});
         auto buffer = req_sock.recv();
-        CerealSerializer::decodeCereal(chatBoardMessages, buffer);
+        CerealSerializer::deserialize(chatBoardMessages, buffer);
         memset(inputTextBuffer, 0, bufferSize);
       }
 

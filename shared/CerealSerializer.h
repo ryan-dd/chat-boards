@@ -13,21 +13,19 @@
 
 namespace CerealSerializer
 {
-
   template <typename T>
-  void encodeCerealAndSend(nng::socket_view sock, T& toSend)
+  std::string serialize(T& toSend)
   {
     std::stringstream ss;
     {
       cereal::PortableBinaryOutputArchive oarchive( ss );
       oarchive( toSend );
     }
-    auto stringToSend = ss.str();
-    sock.send({stringToSend.c_str(), stringToSend.size()});
+    return ss.str();
   }
 
   template <typename T>
-  void decodeCereal(T& decodingResult, nng::view buffer)
+  void deserialize(T& decodingResult, nng::view buffer)
   {
     std::string outstring{(char*)buffer.data(), buffer.size()};
     std::stringstream ss{outstring};
