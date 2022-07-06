@@ -4,14 +4,6 @@
 #include <cstdio>
 #include <spdlog/spdlog.h>
 
-#include "imgui.h"
-#include "bindings/imgui_impl_glfw.h"
-#include "bindings/imgui_impl_opengl3.h"
-
-#include <GL/glew.h> // Initialize with glewInit()
-
-// Include glfw3.h after our OpenGL definitions
-#include <GLFW/glfw3.h>
 #include <unordered_map>
 #include <nngpp/nngpp.h>
 #include <nngpp/protocol/sub0.h>
@@ -20,79 +12,16 @@
 #include "Data.h"
 #include "CerealSerializer.h"
 
-static void glfw_error_callback(int error, const char *description)
-{
-  fprintf(stderr, "Glfw Error %d: %s\n", error, description);
-}
-
 void GUI::start()
 {
-  // Setup window
-  glfwSetErrorCallback(glfw_error_callback);
-  if (!glfwInit())
+  auto window = initGraphics();
+
+  if(window == nullptr)
   {
     return;
   }
 
-    // Decide GL+GLSL versions
-#if __APPLE__
-  // GL 3.2 + GLSL 150
-  const char *glsl_version = "#version 150";
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // 3.2+ only
-  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);       // Required on Mac
-#else
-  // GL 3.0 + GLSL 130
-  const char *glsl_version = "#version 130";
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-#endif
-
-  // Create window with graphics context
-  constexpr int width = 1280;
-  constexpr int height = 720;
-  GLFWwindow *window = glfwCreateWindow(width, height, "Chat boards", nullptr, nullptr);
-  if (window == nullptr)
-  {
-    return;
-  }
-
-  glfwMakeContextCurrent(window);
-  glfwSwapInterval(1); // Enable vsync
-
-  bool err = glewInit() != GLEW_OK;
-
-  if (err)
-  {
-    spdlog::error("Failed to initialize OpenGL loader!");
-    return;
-  }
-
-  int screen_width;
-  int screen_height;
-  glfwGetFramebufferSize(window, &screen_width, &screen_height);
-  glViewport(0, 0, screen_width, screen_height);
-
-  // Setup Dear ImGui context
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  ImGuiIO &io = ImGui::GetIO();
-  // Setup Platform/Renderer bindings
-  ImGui_ImplGlfw_InitForOpenGL(window, true);
-  ImGui_ImplOpenGL3_Init(glsl_version);
-  // Setup Dear ImGui style
-  ImGui::StyleColorsDark();
-
-  bool initialized_at_bottom = false;
-  
-  size_t bufferSize = 500;
-  char inputTextBuffer[bufferSize];
-  memset(inputTextBuffer, 0, bufferSize);
-  std::string state = "Boards";
-  std::string currentBoard{};
-
-  // Get initial messages from server
+  // Get initial data from server
 	nng::socket req_sock = nng::req::open();
 	req_sock.dial( "tcp://localhost:8000" );
   req_sock.send("Hello");
@@ -100,24 +29,40 @@ void GUI::start()
   BoardMessages chatBoardMessages;
 	nng::buffer req_buf = req_sock.recv();
   CerealSerializer::decodeCereal(chatBoardMessages, req_buf);
-  spdlog::info(chatBoardMessages.at("board1")[0]);
 
+  // Initialize socket that will be updating the chat data
   nng::socket sub_socket = nng::sub::open();
   sub_socket.set_opt( NNG_OPT_SUB_SUBSCRIBE, {} );
   sub_socket.dial("tcp://localhost:8001"); 
 
-  void* data;
+  // Initialize gui state 
+  // All states
+  enum class BoardState{
+    Lobby,
+    Chat
+  };
+
+  BoardState state = BoardState::Lobby;
+  std::string currentBoard{};
+
+  void* subscriptionData;
   size_t size;
+
+  // Board state
+  bool focusInitializedAtBottom = false;
+  constexpr size_t bufferSize = 500;
+  char inputTextBuffer[bufferSize]{};
+
   while (!glfwWindowShouldClose(window))
   {
     // See if server published any data updates
     // Note: socket.recv() throws an exception if message is not received on non-block, which is way too expensive.
     // so we will use nng instead of nngpp here.
-    int r = nng_recv(sub_socket.get(), &data, &size, nng::flag::nonblock | nng::flag::alloc);
+    int r = nng_recv(sub_socket.get(), &subscriptionData, &size, nng::flag::nonblock | nng::flag::alloc);
     if( r == static_cast<int>(nng::error::success) ) 
     {
       spdlog::info("Got sub message");
-      CerealSerializer::decodeCereal(chatBoardMessages, {data, size});
+      CerealSerializer::decodeCereal(chatBoardMessages, {subscriptionData, size});
     }
 
     glfwPollEvents();
@@ -130,27 +75,27 @@ void GUI::start()
     ImGui::NewFrame();
     ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, {800.f,600.f });
 
-    if(state == "Boards")
+    if(state == BoardState::Lobby)
     {
-      ImGui::Begin("Boards");
+      ImGui::Begin("Lobby");
       for(auto [key, value]: chatBoardMessages)
       {
         if (ImGui::Button(key.data()))
         {
           currentBoard = key;
-          initialized_at_bottom = false;
-          state = "Chat";
+          state = BoardState::Chat;
         }
       }
       ImGui::End();
     }
-    else if(state == "Chat")
+    else if(state == BoardState::Chat)
     {
-      ImGui::Begin("Chat here!!");
+      ImGui::Begin(currentBoard.data());
 
       if (ImGui::Button("Back"))
       {
-        state = "Boards";
+        focusInitializedAtBottom = false;
+        state = BoardState::Lobby;
       }
 
       for(auto& message: chatBoardMessages.at(currentBoard))
@@ -158,16 +103,18 @@ void GUI::start()
         ImGui::Text("%s", message.data()); 
       }
 
-      if(!initialized_at_bottom)
+      if(!focusInitializedAtBottom)
       {
         ImGui::SetScrollHere(0.999f);
-        initialized_at_bottom = true;
+        focusInitializedAtBottom = true;
       }
 
       ImGui::InputTextMultiline("##text1", inputTextBuffer, bufferSize, {300, 50});
 
-      if (ImGui::IsRootWindowOrAnyChildFocused() && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0))
-         ImGui::SetKeyboardFocusHere(0);
+      if(ImGui::IsRootWindowOrAnyChildFocused() && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0))
+      {
+       ImGui::SetKeyboardFocusHere(0);
+      }
 
       if (ImGui::Button("Send"))
       {
@@ -191,12 +138,81 @@ void GUI::start()
     glfwSwapBuffers(window);
   }
 
-  // Cleanup
+  shutdownGraphics(window);
+}
+
+static void glfw_error_callback(int error, const char *description)
+{
+  fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+}
+
+GLFWwindow* GUI::initGraphics()
+{
+    // Setup window
+  glfwSetErrorCallback(glfw_error_callback);
+  if (!glfwInit())
+  {
+    return nullptr;
+  }
+
+    // Decide GL+GLSL versions
+#if __APPLE__
+  // GL 3.2 + GLSL 150
+  const char *glsl_version = "#version 150";
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // 3.2+ only
+  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);       // Required on Mac
+#else
+  // GL 3.0 + GLSL 130
+  const char *glsl_version = "#version 130";
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+#endif
+
+  // Create window with graphics context
+  constexpr int width = 1280;
+  constexpr int height = 720;
+  GLFWwindow *window = glfwCreateWindow(width, height, "Chat boards", nullptr, nullptr);
+  if (window == nullptr)
+  {
+    return nullptr;
+  }
+
+  glfwMakeContextCurrent(window);
+  glfwSwapInterval(1); // Enable vsync
+
+  bool err = glewInit() != GLEW_OK;
+
+  if (err)
+  {
+    spdlog::error("Failed to initialize OpenGL loader!");
+    return nullptr;
+  }
+
+  int screen_width;
+  int screen_height;
+  glfwGetFramebufferSize(window, &screen_width, &screen_height);
+  glViewport(0, 0, screen_width, screen_height);
+
+  // Setup Dear ImGui context
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO &io = ImGui::GetIO();
+  // Setup Platform/Renderer bindings
+  ImGui_ImplGlfw_InitForOpenGL(window, true);
+  ImGui_ImplOpenGL3_Init(glsl_version);
+  // Setup Dear ImGui style
+  ImGui::StyleColorsDark();
+  return window;
+}
+
+void GUI::shutdownGraphics(GLFWwindow* window)
+{
   ImGui_ImplOpenGL3_Shutdown();
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
 
   glfwDestroyWindow(window);
   glfwTerminate();
-
 }

@@ -27,13 +27,13 @@ namespace CerealSerializer
   }
 
   template <typename T>
-  void decodeCereal(T& decodedMap, nng::view buffer)
+  void decodeCereal(T& decodingResult, nng::view buffer)
   {
     std::string outstring{(char*)buffer.data(), buffer.size()};
-    std::stringstream ss2{outstring};
+    std::stringstream ss{outstring};
     {
-      cereal::PortableBinaryInputArchive iarchive(ss2);
-      iarchive(decodedMap);
+      cereal::PortableBinaryInputArchive iarchive(ss);
+      iarchive(decodingResult);
     }
   }
 }
