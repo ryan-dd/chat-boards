@@ -3,7 +3,8 @@
 
 #include "Data.h"
 
-#include "nngpp/socket_view.h"
+#include <nngpp/buffer.h>
+
 #include <cereal/types/unordered_map.hpp>
 #include <cereal/types/vector.hpp>
 #include <cereal/types/string.hpp>

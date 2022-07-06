@@ -1,16 +1,11 @@
 #include "GUI.h"
-
-#include <cstddef>
-#include <cstdio>
-#include <spdlog/spdlog.h>
-
-#include <unordered_map>
-#include <nngpp/nngpp.h>
-#include <nngpp/protocol/sub0.h>
-#include <nngpp/protocol/req0.h>
-
 #include "Data.h"
 #include "CerealSerializer.h"
+
+#include <spdlog/spdlog.h>
+
+#include <nngpp/protocol/sub0.h>
+#include <nngpp/protocol/req0.h>
 
 void GUI::start()
 {

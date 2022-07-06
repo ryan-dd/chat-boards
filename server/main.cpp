@@ -44,11 +44,4 @@ int main()
       pub_sock.send({serializedData.data(), serializedData.size()});
     }
   }
-
-// shoot off in different thread
-//  while(not_finished)
-//  sleep_for 1 seconds
-//  set send to true
-//
-
 }

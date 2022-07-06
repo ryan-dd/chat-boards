@@ -5,7 +5,7 @@
 #include "bindings/imgui_impl_glfw.h"
 #include "bindings/imgui_impl_opengl3.h"
 #include <GL/glew.h> 
-// Include glfw3.h after our OpenGL definitions
+// Include glfw3.h after OpenGL definitions
 #include <GLFW/glfw3.h>
 
 class GUI
