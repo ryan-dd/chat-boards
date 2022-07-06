@@ -18,6 +18,7 @@ void GUI::start()
 
   if(window == nullptr)
   {
+    spdlog::error("Failed to initialize");
     return;
   }
 
@@ -32,11 +33,10 @@ void GUI::start()
 
   // Initialize socket that will be updating the chat data
   nng::socket sub_socket = nng::sub::open();
-  sub_socket.set_opt( NNG_OPT_SUB_SUBSCRIBE, {} );
+  sub_socket.set_opt( NNG_OPT_SUB_SUBSCRIBE, {} ); // Subscribe to everything
   sub_socket.dial("tcp://localhost:8001"); 
 
-  // Initialize gui state 
-  // Data for all states
+  // Initialize GUI state 
   enum class BoardState{
     Lobby,
     Chat
@@ -51,7 +51,7 @@ void GUI::start()
   // Data for Chat state
   bool focusInitializedAtBottom = false;
   constexpr size_t bufferSize = 500;
-  char inputTextBuffer[bufferSize]{};
+  char messageTextInputBuffer[bufferSize]{};
 
   while (!glfwWindowShouldClose(window))
   {
@@ -65,15 +65,7 @@ void GUI::start()
       CerealSerializer::deserialize(chatBoardMessages, {subscriptionData, size});
     }
 
-    glfwPollEvents();
-    glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    // feed inputs to dear imgui, start new frame
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, {800.f,600.f });
+    handleGraphicsOnLoopStart();
 
     if(state == BoardState::Lobby)
     {
@@ -103,13 +95,14 @@ void GUI::start()
         ImGui::Text("%s", message.data()); 
       }
 
-      if(!focusInitializedAtBottom)
+      if(!focusInitializedAtBottom) 
       {
+        // Set the scroll to the bottom for access to the input text initially
         ImGui::SetScrollHere(0.999f);
         focusInitializedAtBottom = true;
       }
 
-      ImGui::InputTextMultiline("##text1", inputTextBuffer, bufferSize, {300, 50});
+      ImGui::InputTextMultiline("##text1", messageTextInputBuffer, bufferSize, {300, 50});
 
       if(ImGui::IsRootWindowOrAnyChildFocused() && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0))
       {
@@ -118,28 +111,46 @@ void GUI::start()
 
       if (ImGui::Button("Send"))
       {
-        NewMessage newMessage{currentBoard, inputTextBuffer};
+        NewMessage newMessage{currentBoard, messageTextInputBuffer};
         auto serializedMessage = CerealSerializer::serialize(newMessage);
         req_sock.send({serializedMessage.data(), serializedMessage.size()});
         auto buffer = req_sock.recv();
         CerealSerializer::deserialize(chatBoardMessages, buffer);
-        memset(inputTextBuffer, 0, bufferSize);
+        memset(messageTextInputBuffer, 0, bufferSize); // Reset text input after sending message
       }
 
       ImGui::End();
     }
 
-    // Render dear imgui into screen
-    ImGui::Render();
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-    int display_w, display_h;
-    glfwGetFramebufferSize(window, &display_w, &display_h);
-    glViewport(0, 0, display_w, display_h);
-    glfwSwapBuffers(window);
+    handleGraphicsOnLoopEnd(window);
   }
 
   shutdownGraphics(window);
+}
+
+void GUI::handleGraphicsOnLoopStart()
+{
+    glfwPollEvents();
+    glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Feed inputs to dear imgui, start new frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, {800.f, 600.f});
+}
+
+void GUI::handleGraphicsOnLoopEnd(GLFWwindow* window)
+{
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    int display_w{}; 
+    int display_h{};
+    glfwGetFramebufferSize(window, &display_w, &display_h);
+    glViewport(0, 0, display_w, display_h);
+    glfwSwapBuffers(window);
 }
 
 static void glfw_error_callback(int error, const char *description)
@@ -149,9 +160,9 @@ static void glfw_error_callback(int error, const char *description)
 
 GLFWwindow* GUI::initGraphics()
 {
-    // Setup window
+  // Setup window
   glfwSetErrorCallback(glfw_error_callback);
-  if (!glfwInit())
+  if (glfwInit() == 0)
   {
     return nullptr;
   }
@@ -191,15 +202,14 @@ GLFWwindow* GUI::initGraphics()
     return nullptr;
   }
 
-  int screen_width;
-  int screen_height;
+  int screen_width{};
+  int screen_height{};
   glfwGetFramebufferSize(window, &screen_width, &screen_height);
   glViewport(0, 0, screen_width, screen_height);
 
   // Setup Dear ImGui context
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
-  ImGuiIO &io = ImGui::GetIO();
   // Setup Platform/Renderer bindings
   ImGui_ImplGlfw_InitForOpenGL(window, true);
   ImGui_ImplOpenGL3_Init(glsl_version);
@@ -217,3 +227,4 @@ void GUI::shutdownGraphics(GLFWwindow* window)
   glfwDestroyWindow(window);
   glfwTerminate();
 }
+

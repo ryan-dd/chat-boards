@@ -19,7 +19,7 @@ namespace CerealSerializer
     std::stringstream ss;
     {
       cereal::PortableBinaryOutputArchive oarchive( ss );
-      oarchive( toSend );
+      oarchive( toSend ); // archive only writes to stringstream in destructor
     }
     return ss.str();
   }

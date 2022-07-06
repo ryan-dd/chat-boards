@@ -15,6 +15,8 @@ public:
 private:
   static GLFWwindow* initGraphics();
   static void shutdownGraphics(GLFWwindow* window);
+  static void handleGraphicsOnLoopStart();
+  static void handleGraphicsOnLoopEnd(GLFWwindow* window);
 };
 
 #endif // SAMPLE_CLASS_H
