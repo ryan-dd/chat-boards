@@ -6,6 +6,7 @@
 
 #include <nngpp/protocol/sub0.h>
 #include <nngpp/protocol/req0.h>
+#include <string>
 
 void GUI::start()
 {
@@ -18,16 +19,23 @@ void GUI::start()
   }
 
   // Get initial data from server
-	nng::socket req_sock = nng::req::open();
+	auto req_sock = nng::req::open();
 	req_sock.dial( "tcp://localhost:8000" );
-  req_sock.send("Hello");
+
+  std::stringstream ss;
+  ss << initialHelloOpcode;
+  auto toSend = ss.str();
+  req_sock.send({toSend.data(), toSend.size()});
 
   BoardMessages chatBoardMessages;
-	nng::buffer req_buf = req_sock.recv();
-  CerealSerializer::deserialize(chatBoardMessages, req_buf);
+	auto req_buf = req_sock.recv();
+  
+  OpcodeType opcode;
+  auto [dataPtr, dataSize] = Data::getMessageOpcode(opcode, req_buf.data(), req_buf.size());
+  CerealSerializer::deserialize(chatBoardMessages, dataPtr, dataSize);
 
   // Initialize socket that will be updating the chat data
-  nng::socket sub_socket = nng::sub::open();
+  auto sub_socket = nng::sub::open();
   sub_socket.set_opt( NNG_OPT_SUB_SUBSCRIBE, {} ); // Subscribe to everything
   sub_socket.dial("tcp://localhost:8001"); 
 
@@ -37,15 +45,18 @@ void GUI::start()
     Chat
   };
 
-  BoardState state = BoardState::Lobby;
+  auto state = BoardState::Lobby;
   std::string currentBoard{};
 
   void* subscriptionData;
   size_t size;
+  constexpr size_t bufferSize = 500;
 
+  // Data for Lobby state
+  char newBoardTextInputBuffer[bufferSize]{};
+  
   // Data for Chat state
   bool focusInitializedAtBottom = false;
-  constexpr size_t bufferSize = 500;
   char messageTextInputBuffer[bufferSize]{};
 
   while (!glfwWindowShouldClose(window))
@@ -57,7 +68,14 @@ void GUI::start()
     if( r == static_cast<int>(nng::error::success) ) 
     {
       spdlog::info("Got sub message");
-      CerealSerializer::deserialize(chatBoardMessages, {subscriptionData, size});
+      OpcodeType opcode;
+      auto [dataPtr, dataSize] = Data::getMessageOpcode(opcode, subscriptionData, size);
+
+      if(opcode == boardMessagesOpcode)
+      {
+        spdlog::info("Got updated board messages");
+        CerealSerializer::deserialize(chatBoardMessages, dataPtr, dataSize);
+      }
     }
 
     handleGraphicsOnLoopStart();
@@ -65,6 +83,22 @@ void GUI::start()
     if(state == BoardState::Lobby)
     {
       ImGui::Begin("Lobby");
+      if (ImGui::Button("New Board"))
+      {
+        NewBoard boardToSend{newBoardTextInputBuffer};
+
+        if(boardToSend.size() != 0)
+        {
+          spdlog::info("a new board is about to appear");
+          auto serializedMessage = CerealSerializer::serialize(boardToSend, newBoardOpcode);
+          req_sock.send({serializedMessage.data(), serializedMessage.size()});
+          req_sock.recv();
+          memset(newBoardTextInputBuffer, 0, bufferSize); // Reset text input after sending message
+        }  
+      }
+
+      ImGui::InputTextMultiline("##text2", newBoardTextInputBuffer, bufferSize, {300, 50});
+
       for(auto [key, value]: chatBoardMessages)
       {
         if (ImGui::Button(key.data()))
@@ -107,10 +141,9 @@ void GUI::start()
       if (ImGui::Button("Send"))
       {
         NewMessage newMessage{currentBoard, messageTextInputBuffer};
-        auto serializedMessage = CerealSerializer::serialize(newMessage);
+        auto serializedMessage = CerealSerializer::serialize(newMessage, newMessageOpCode);
         req_sock.send({serializedMessage.data(), serializedMessage.size()});
-        auto buffer = req_sock.recv();
-        CerealSerializer::deserialize(chatBoardMessages, buffer);
+        req_sock.recv();
         memset(messageTextInputBuffer, 0, bufferSize); // Reset text input after sending message
       }
 

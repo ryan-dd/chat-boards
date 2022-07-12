@@ -15,9 +15,11 @@
 namespace CerealSerializer
 {
   template <typename T>
-  std::string serialize(T& toSend)
+  std::string serialize(T& toSend, OpcodeType opcode)
   {
     std::stringstream ss;
+    ss << opcode;
+
     {
       cereal::PortableBinaryOutputArchive oarchive( ss );
       oarchive( toSend ); // archive only writes to stringstream in destructor
@@ -26,9 +28,10 @@ namespace CerealSerializer
   }
 
   template <typename T>
-  void deserialize(T& decodingResult, nng::view buffer)
+  void deserialize(T& decodingResult, void* data, size_t size)
   {
-    std::string outstring{(char*)buffer.data(), buffer.size()};
+    std::string outstring{reinterpret_cast<char*>(data), size};
+
     std::stringstream ss{outstring};
     {
       cereal::PortableBinaryInputArchive iarchive(ss);

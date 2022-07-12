@@ -23,25 +23,43 @@ int main()
     {"board2", {"hi", "hi3"}}
   };
 
+  OpcodeType opcode;
+
   while(true)
   {
     spdlog::info("Listening");
     nng::buffer rep_buf = rep_sock.recv(); 
+    auto [dataPtr, dataSize] = Data::getMessageOpcode(opcode, rep_buf.data(), rep_buf.size());
     spdlog::info("Got message");
 
-    if(rep_buf == "Hello")
+    if(opcode == initialHelloOpcode)
     {
-      auto serializedData = CerealSerializer::serialize(messages);
+      auto serializedData = CerealSerializer::serialize(messages, boardMessagesOpcode);
       rep_sock.send({serializedData.data(), serializedData.size()});
     }
-    else 
+    else if(opcode == newMessageOpCode) 
     {
-      NewMessage newMessage;
-      CerealSerializer::deserialize(newMessage, rep_buf);
+      spdlog::info("Got New message opcode");
+      NewMessage newMessage{};
+      CerealSerializer::deserialize(newMessage, dataPtr, dataSize);
       messages.at(newMessage.first).push_back(newMessage.second);
-      auto serializedData = CerealSerializer::serialize(messages);
-      rep_sock.send({serializedData.data(), serializedData.size()});
+      auto serializedData = CerealSerializer::serialize(messages, boardMessagesOpcode);
+      rep_sock.send("");
       pub_sock.send({serializedData.data(), serializedData.size()});
+    }
+    else if(opcode == newBoardOpcode)
+    {
+      spdlog::info("Got New Board opcode");
+      NewBoard newBoard{};
+      CerealSerializer::deserialize(newBoard, dataPtr, dataSize);
+      messages.insert({newBoard, {}});
+      auto serializedData = CerealSerializer::serialize(messages, boardMessagesOpcode);
+      rep_sock.send("");
+      pub_sock.send({serializedData.data(), serializedData.size()});
+    }
+    else
+    {
+      spdlog::warn("Unknown opcode: {}", opcode);
     }
   }
 }
