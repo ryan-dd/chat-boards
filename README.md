@@ -14,3 +14,9 @@ CMake and Conan
 `cmake -S . -B build`
 
 `cmake --build build`
+
+## To run
+
+`./build/server/ChatBoardServer`
+
+`./build/client/ChatBoardClient`
