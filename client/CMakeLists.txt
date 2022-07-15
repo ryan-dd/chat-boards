@@ -13,12 +13,15 @@ add_executable( ${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PUBLIC 
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_BINARY_DIR}
+  ${nngpp_SOURCE_DIR}/include/
 )
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLEW)
-target_link_libraries(${PROJECT_NAME} PUBLIC
+target_link_libraries(${PROJECT_NAME} PRIVATE
   CONAN_PKG::imgui
   CONAN_PKG::glew
   CONAN_PKG::glfw
+  CONAN_PKG::nng
   Shared
   )
+
