@@ -12,18 +12,15 @@
 
 int main()
 {
-	nng::socket rep_sock = nng::rep::open(); 
-	rep_sock.listen( "tcp://localhost:8000" ); 
+  nng::socket rep_sock = nng::rep::open(); 
+  rep_sock.listen( "tcp://localhost:8000" ); 
 
   nng::socket pub_sock = nng::pub::open();
-	pub_sock.listen( "tcp://localhost:8001" ); 
+  pub_sock.listen( "tcp://localhost:8001" ); 
 
-  BoardMessages messages{
-    {"board1", {"hi", "hi2"}},
-    {"board2", {"hi", "hi3"}}
-  };
+  BoardMessages messages{};
 
-  OpcodeType opcode;
+  OpcodeType opcode{};
 
   spdlog::info("Listening");
   while(true)
