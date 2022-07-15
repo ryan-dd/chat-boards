@@ -27,11 +27,11 @@ void GUI::start()
   auto toSend = ss.str();
   req_sock.send({toSend.data(), toSend.size()});
 
-  BoardMessages chatBoardMessages;
 	auto req_buf = req_sock.recv();
   
-  OpcodeType opcode;
-  auto [dataPtr, dataSize] = Data::getMessageOpcode(opcode, req_buf.data(), req_buf.size());
+  OpcodeType initialDataOpcode{};
+  auto [dataPtr, dataSize] = Data::getMessageOpcode(initialDataOpcode, req_buf.data(), req_buf.size());
+  BoardMessages chatBoardMessages;
   CerealSerializer::deserialize(chatBoardMessages, dataPtr, dataSize);
 
   // Initialize socket that will be updating the chat data
@@ -48,8 +48,8 @@ void GUI::start()
   auto state = BoardState::Lobby;
   std::string currentBoard{};
 
-  void* subscriptionData;
-  size_t size;
+  void* subscriptionData{};
+  size_t size{};
   constexpr size_t bufferSize = 500;
 
   // Data for Lobby state
@@ -67,13 +67,12 @@ void GUI::start()
     int r = nng_recv(sub_socket.get(), &subscriptionData, &size, nng::flag::nonblock | nng::flag::alloc);
     if( r == static_cast<int>(nng::error::success) ) 
     {
-      spdlog::info("Got sub message");
-      OpcodeType opcode;
+      OpcodeType opcode{};
       auto [dataPtr, dataSize] = Data::getMessageOpcode(opcode, subscriptionData, size);
 
       if(opcode == boardMessagesOpcode)
       {
-        spdlog::info("Got updated board messages");
+        spdlog::info("Updated board messages");
         CerealSerializer::deserialize(chatBoardMessages, dataPtr, dataSize);
       }
     }
@@ -89,7 +88,6 @@ void GUI::start()
 
         if(boardToSend.size() != 0)
         {
-          spdlog::info("a new board is about to appear");
           auto serializedMessage = CerealSerializer::serialize(boardToSend, newBoardOpcode);
           req_sock.send({serializedMessage.data(), serializedMessage.size()});
           req_sock.recv();
@@ -99,11 +97,11 @@ void GUI::start()
 
       ImGui::InputTextMultiline("##text2", newBoardTextInputBuffer, bufferSize, {300, 50});
 
-      for(auto [key, value]: chatBoardMessages)
+      for(auto [boardName, _]: chatBoardMessages)
       {
-        if (ImGui::Button(key.data()))
+        if (ImGui::Button(boardName.data()))
         {
-          currentBoard = key;
+          currentBoard = boardName;
           state = BoardState::Chat;
         }
       }

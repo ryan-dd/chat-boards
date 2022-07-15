@@ -25,12 +25,11 @@ int main()
 
   OpcodeType opcode;
 
+  spdlog::info("Listening");
   while(true)
   {
-    spdlog::info("Listening");
     nng::buffer rep_buf = rep_sock.recv(); 
     auto [dataPtr, dataSize] = Data::getMessageOpcode(opcode, rep_buf.data(), rep_buf.size());
-    spdlog::info("Got message");
 
     if(opcode == initialHelloOpcode)
     {
@@ -39,7 +38,7 @@ int main()
     }
     else if(opcode == newMessageOpCode) 
     {
-      spdlog::info("Got New message opcode");
+      spdlog::info("Got New message");
       NewMessage newMessage{};
       CerealSerializer::deserialize(newMessage, dataPtr, dataSize);
       messages.at(newMessage.first).push_back(newMessage.second);
@@ -49,7 +48,7 @@ int main()
     }
     else if(opcode == newBoardOpcode)
     {
-      spdlog::info("Got New Board opcode");
+      spdlog::info("Got New Board");
       NewBoard newBoard{};
       CerealSerializer::deserialize(newBoard, dataPtr, dataSize);
       messages.insert({newBoard, {}});
