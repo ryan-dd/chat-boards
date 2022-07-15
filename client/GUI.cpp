@@ -19,15 +19,15 @@ void GUI::start()
   }
 
   // Get initial data from server
-	auto req_sock = nng::req::open();
-	req_sock.dial( "tcp://localhost:8000" );
+  auto req_sock = nng::req::open();
+  req_sock.dial( "tcp://localhost:8000" );
 
   std::stringstream ss;
   ss << initialHelloOpcode;
   auto toSend = ss.str();
   req_sock.send({toSend.data(), toSend.size()});
 
-	auto req_buf = req_sock.recv();
+  auto req_buf = req_sock.recv();
   
   OpcodeType initialDataOpcode{};
   auto [dataPtr, dataSize] = Data::getMessageOpcode(initialDataOpcode, req_buf.data(), req_buf.size());
