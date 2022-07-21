@@ -1,22 +1,26 @@
-#ifndef SAMPLE_CLASS_H
-#define SAMPLE_CLASS_H
+#ifndef GUI_H
+#define GUI_H
 
-#include "imgui.h"
-#include "bindings/imgui_impl_glfw.h"
-#include "bindings/imgui_impl_opengl3.h"
-#include <GL/glew.h> 
-// Include glfw3.h after OpenGL definitions
-#include <GLFW/glfw3.h>
+#include <Data.h>
+
+struct GLFWwindow;
+namespace nng{struct socket_view;}
 
 class GUI
 {
 public:
   static void start();
 private:
+  enum class BoardState{
+    Lobby,
+    Chat
+  };
+
+  static BoardMessages getInitialBoardMessages(nng::socket_view socket);
   static GLFWwindow* initGraphics();
   static void shutdownGraphics(GLFWwindow* window);
   static void handleGraphicsOnLoopStart();
   static void handleGraphicsOnLoopEnd(GLFWwindow* window);
 };
 
-#endif // SAMPLE_CLASS_H
+#endif // GUI_H

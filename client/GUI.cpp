@@ -6,11 +6,20 @@
 
 #include <nngpp/protocol/sub0.h>
 #include <nngpp/protocol/req0.h>
+#include <nngpp/socket_view.h>
+
+#include "imgui.h"
+#include "bindings/imgui_impl_glfw.h"
+#include "bindings/imgui_impl_opengl3.h"
+#include <GL/glew.h> 
+// Include glfw3.h after OpenGL definitions
+#include <GLFW/glfw3.h>
+
 #include <string>
 
 void GUI::start()
 {
-  auto window = initGraphics();
+  auto* window = initGraphics();
 
   if(window == nullptr)
   {
@@ -18,46 +27,31 @@ void GUI::start()
     return;
   }
 
-  // Get initial data from server
+  // Socket to send on
   auto req_sock = nng::req::open();
   req_sock.dial( "tcp://localhost:8000" );
 
-  std::stringstream ss;
-  ss << initialHelloOpcode;
-  auto toSend = ss.str();
-  req_sock.send({toSend.data(), toSend.size()});
-
-  auto req_buf = req_sock.recv();
-  
-  OpcodeType initialDataOpcode{};
-  auto [dataPtr, dataSize] = Data::getMessageOpcode(initialDataOpcode, req_buf.data(), req_buf.size());
-  BoardMessages chatBoardMessages;
-  CerealSerializer::deserialize(chatBoardMessages, dataPtr, dataSize);
-
-  // Initialize socket that will be updating the chat data
+  // Socket to receive updates on
   auto sub_socket = nng::sub::open();
   sub_socket.set_opt( NNG_OPT_SUB_SUBSCRIBE, {} ); // Subscribe to everything
   sub_socket.dial("tcp://localhost:8001"); 
 
-  // Initialize GUI state 
-  enum class BoardState{
-    Lobby,
-    Chat
-  };
-
+  // Initialize GUI state
+  auto chatBoardMessages = getInitialBoardMessages(req_sock);
   auto state = BoardState::Lobby;
   std::string currentBoard{};
 
+  // Data for updating
   void* subscriptionData{};
   size_t size{};
-  constexpr size_t bufferSize = 500;
 
+  constexpr size_t textInputBufSize = 500;
   // Data for Lobby state
-  char newBoardTextInputBuffer[bufferSize]{};
+  char newBoardTextInputBuffer[textInputBufSize]{};
   
   // Data for Chat state
   bool focusInitializedAtBottom = false;
-  char messageTextInputBuffer[bufferSize]{};
+  char messageTextInputBuffer[textInputBufSize]{};
 
   while (!glfwWindowShouldClose(window))
   {
@@ -86,16 +80,16 @@ void GUI::start()
       {
         NewBoard boardToSend{newBoardTextInputBuffer};
 
-        if(boardToSend.size() != 0)
+        if(!boardToSend.empty())
         {
           auto serializedMessage = CerealSerializer::serialize(boardToSend, newBoardOpcode);
           req_sock.send({serializedMessage.data(), serializedMessage.size()});
           req_sock.recv();
-          memset(newBoardTextInputBuffer, 0, bufferSize); // Reset text input after sending message
+          memset(newBoardTextInputBuffer, 0, textInputBufSize); // Reset text input after sending message
         }  
       }
 
-      ImGui::InputTextMultiline("##text2", newBoardTextInputBuffer, bufferSize, {300, 50});
+      ImGui::InputTextMultiline("##text2", newBoardTextInputBuffer, textInputBufSize, {300, 50});
 
       for(auto [boardName, _]: chatBoardMessages)
       {
@@ -125,11 +119,11 @@ void GUI::start()
       if(!focusInitializedAtBottom) 
       {
         // Set the scroll to the bottom for access to the input text initially
-        ImGui::SetScrollHere(0.999f);
+        ImGui::SetScrollHere(0.999F);
         focusInitializedAtBottom = true;
       }
 
-      ImGui::InputTextMultiline("##text1", messageTextInputBuffer, bufferSize, {300, 50});
+      ImGui::InputTextMultiline("##text1", messageTextInputBuffer, textInputBufSize, {300, 50});
 
       if(ImGui::IsRootWindowOrAnyChildFocused() && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0))
       {
@@ -142,7 +136,7 @@ void GUI::start()
         auto serializedMessage = CerealSerializer::serialize(newMessage, newMessageOpCode);
         req_sock.send({serializedMessage.data(), serializedMessage.size()});
         req_sock.recv();
-        memset(messageTextInputBuffer, 0, bufferSize); // Reset text input after sending message
+        memset(messageTextInputBuffer, 0, textInputBufSize); // Reset text input after sending message
       }
 
       ImGui::End();
@@ -152,6 +146,22 @@ void GUI::start()
   }
 
   shutdownGraphics(window);
+}
+
+BoardMessages GUI::getInitialBoardMessages(nng::socket_view socket)
+{
+  std::stringstream ss;
+  ss << initialHelloOpcode;
+  auto toSend = ss.str();
+  socket.send({toSend.data(), toSend.size()});
+
+  auto req_buf = socket.recv();
+  
+  OpcodeType initialDataOpcode{};
+  auto [dataPtr, dataSize] = Data::getMessageOpcode(initialDataOpcode, req_buf.data(), req_buf.size());
+  BoardMessages chatBoardMessages;
+  CerealSerializer::deserialize(chatBoardMessages, dataPtr, dataSize);
+  return chatBoardMessages;
 }
 
 void GUI::handleGraphicsOnLoopStart()
