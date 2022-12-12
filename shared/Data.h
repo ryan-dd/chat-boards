@@ -8,21 +8,21 @@
 #include <utility>
 
 using OpcodeType = uint8_t;
-class Data
+
+namespace Data
 {
-public:
-  static std::pair<void*, size_t> getMessageOpcode(OpcodeType& opcode, void* data, size_t size);
+  std::pair<void*, size_t> deserializeOpcode(OpcodeType& opcode, void* data, size_t size);
 };
 
-constexpr OpcodeType initialHelloOpcode = 0;
+constexpr OpcodeType initialHelloOpcode{0};
 
-constexpr OpcodeType boardMessagesOpcode = 1;
+constexpr OpcodeType boardMessagesOpcode{1};
 using BoardMessages = std::unordered_map<std::string, std::vector<std::string>>;
 
-constexpr OpcodeType newMessageOpCode = 2;
+constexpr OpcodeType newMessageOpCode{2};
 using NewMessage = std::pair<std::string, std::string>;
 
-constexpr OpcodeType newBoardOpcode = 3;
+constexpr OpcodeType newBoardOpcode{3};
 using NewBoard = std::string;
 
 #endif

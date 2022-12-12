@@ -62,7 +62,7 @@ void GUI::start()
     if( r == static_cast<int>(nng::error::success) ) 
     {
       OpcodeType opcode{};
-      auto [dataPtr, dataSize] = Data::getMessageOpcode(opcode, subscriptionData, size);
+      auto [dataPtr, dataSize] = Data::deserializeOpcode(opcode, subscriptionData, size);
 
       if(opcode == boardMessagesOpcode)
       {
@@ -73,73 +73,75 @@ void GUI::start()
 
     handleGraphicsOnLoopStart();
 
-    if(state == BoardState::Lobby)
+    switch(state)
     {
-      ImGui::Begin("Lobby");
-      if (ImGui::Button("New Board"))
-      {
-        NewBoard boardToSend{newBoardTextInputBuffer};
-
-        if(!boardToSend.empty())
+      case BoardState::Lobby:
+        ImGui::Begin("Lobby");
+        if (ImGui::Button("New Board"))
         {
-          auto serializedMessage = CerealSerializer::serialize(boardToSend, newBoardOpcode);
+          NewBoard boardToSend{newBoardTextInputBuffer};
+
+          if(!boardToSend.empty())
+          {
+            auto serializedMessage = CerealSerializer::serialize(boardToSend, newBoardOpcode);
+            req_sock.send({serializedMessage.data(), serializedMessage.size()});
+            req_sock.recv();
+            memset(newBoardTextInputBuffer, 0, textInputBufSize); // Reset text input after sending message
+          }  
+        }
+
+        ImGui::InputTextMultiline("##text2", newBoardTextInputBuffer, textInputBufSize, {300, 50});
+
+        for(auto [boardName, _]: chatBoardMessages)
+        {
+          if (ImGui::Button(boardName.data()))
+          {
+            currentBoard = boardName;
+            state = BoardState::Chat;
+          }
+        }
+        ImGui::End();
+        break;
+
+      case BoardState::Chat:
+        ImGui::Begin(currentBoard.data());
+
+        if (ImGui::Button("Back"))
+        {
+          focusInitializedAtBottom = false;
+          state = BoardState::Lobby;
+        }
+
+        for(auto& message: chatBoardMessages.at(currentBoard))
+        {
+          ImGui::Text("%s", message.data()); 
+        }
+
+        if(!focusInitializedAtBottom) 
+        {
+          // Set the scroll to the bottom for access to the input text initially
+          ImGui::SetScrollHere(0.999F);
+          focusInitializedAtBottom = true;
+        }
+
+        ImGui::InputTextMultiline("##text1", messageTextInputBuffer, textInputBufSize, {300, 50});
+
+        if(ImGui::IsRootWindowOrAnyChildFocused() && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0))
+        {
+         ImGui::SetKeyboardFocusHere(0);
+        }
+
+        if (ImGui::Button("Send"))
+        {
+          NewMessage newMessage{currentBoard, messageTextInputBuffer};
+          auto serializedMessage = CerealSerializer::serialize(newMessage, newMessageOpCode);
           req_sock.send({serializedMessage.data(), serializedMessage.size()});
           req_sock.recv();
-          memset(newBoardTextInputBuffer, 0, textInputBufSize); // Reset text input after sending message
-        }  
-      }
-
-      ImGui::InputTextMultiline("##text2", newBoardTextInputBuffer, textInputBufSize, {300, 50});
-
-      for(auto [boardName, _]: chatBoardMessages)
-      {
-        if (ImGui::Button(boardName.data()))
-        {
-          currentBoard = boardName;
-          state = BoardState::Chat;
+          memset(messageTextInputBuffer, 0, textInputBufSize); // Reset text input after sending message
         }
-      }
-      ImGui::End();
-    }
-    else if(state == BoardState::Chat)
-    {
-      ImGui::Begin(currentBoard.data());
 
-      if (ImGui::Button("Back"))
-      {
-        focusInitializedAtBottom = false;
-        state = BoardState::Lobby;
-      }
-
-      for(auto& message: chatBoardMessages.at(currentBoard))
-      {
-        ImGui::Text("%s", message.data()); 
-      }
-
-      if(!focusInitializedAtBottom) 
-      {
-        // Set the scroll to the bottom for access to the input text initially
-        ImGui::SetScrollHere(0.999F);
-        focusInitializedAtBottom = true;
-      }
-
-      ImGui::InputTextMultiline("##text1", messageTextInputBuffer, textInputBufSize, {300, 50});
-
-      if(ImGui::IsRootWindowOrAnyChildFocused() && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0))
-      {
-       ImGui::SetKeyboardFocusHere(0);
-      }
-
-      if (ImGui::Button("Send"))
-      {
-        NewMessage newMessage{currentBoard, messageTextInputBuffer};
-        auto serializedMessage = CerealSerializer::serialize(newMessage, newMessageOpCode);
-        req_sock.send({serializedMessage.data(), serializedMessage.size()});
-        req_sock.recv();
-        memset(messageTextInputBuffer, 0, textInputBufSize); // Reset text input after sending message
-      }
-
-      ImGui::End();
+        ImGui::End();
+        break;
     }
 
     handleGraphicsOnLoopEnd(window);
@@ -152,13 +154,13 @@ BoardMessages GUI::getInitialBoardMessages(nng::socket_view socket)
 {
   std::stringstream ss;
   ss << initialHelloOpcode;
-  auto toSend = ss.str();
+  auto toSend{ss.str()};
   socket.send({toSend.data(), toSend.size()});
 
-  auto req_buf = socket.recv();
+  auto req_buf{socket.recv()};
   
   OpcodeType initialDataOpcode{};
-  auto [dataPtr, dataSize] = Data::getMessageOpcode(initialDataOpcode, req_buf.data(), req_buf.size());
+  auto [dataPtr, dataSize] = Data::deserializeOpcode(initialDataOpcode, req_buf.data(), req_buf.size());
   BoardMessages chatBoardMessages;
   CerealSerializer::deserialize(chatBoardMessages, dataPtr, dataSize);
   return chatBoardMessages;
