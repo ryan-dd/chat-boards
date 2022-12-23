@@ -7,6 +7,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 include(cmake/StaticAnalyzers.cmake)
 
 include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
